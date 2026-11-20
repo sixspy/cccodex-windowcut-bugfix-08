@@ -11,6 +11,10 @@ DB_PATH = DATA / "app.db"
 FIXTURES = ROOT / "fixtures"
 FRONTEND = ROOT / "frontend"
 
+# 《持有人释锁册》当天唯一口径：甲路径（持有人门禁拒绝）。
+# 乙路径（hold_ticket 票根同事务核销）不得与甲混用。
+HOLDER_RELEASE_PATH = "甲"
+
 PRODUCT_META = {
     "modules": [
         "windows",
@@ -105,6 +109,24 @@ CREATE TABLE IF NOT EXISTS contention_log(
   actor TEXT NOT NULL,
   action TEXT NOT NULL,
   detail TEXT,
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS lock_receipts(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ticket TEXT NOT NULL,
+  lock_key TEXT NOT NULL,
+  actor TEXT NOT NULL,
+  holder TEXT,
+  action TEXT NOT NULL,
+  outcome TEXT NOT NULL,
+  detail TEXT,
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS holder_release_ledger(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  decided_on TEXT NOT NULL UNIQUE,
+  path TEXT NOT NULL,
+  note TEXT,
   created_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS audit_trail(
@@ -255,7 +277,32 @@ def init_db() -> None:
         conn.executescript(SCHEMA)
         ensure_users(conn)
         seed_if_empty(conn)
+        _ensure_release_ledger(conn)
         conn.commit()
+
+
+def _ensure_release_ledger(conn: sqlite3.Connection) -> None:
+    """当天无决议则登记甲路径；已登记的决议当天不得改口。"""
+    from datetime import date, datetime
+
+    today = date.today().isoformat()
+    if (
+        conn.execute(
+            "SELECT COUNT(*) c FROM holder_release_ledger WHERE decided_on=?",
+            (today,),
+        ).fetchone()["c"]
+        == 0
+    ):
+        conn.execute(
+            """INSERT INTO holder_release_ledger(decided_on,path,note,created_at)
+               VALUES (?,?,?,?)""",
+            (
+                today,
+                HOLDER_RELEASE_PATH,
+                "甲路径：请求用户不等于 holder 则拒绝删锁行，正式零改",
+                datetime.now().isoformat(timespec="seconds"),
+            ),
+        )
 
 
 def write_audit(

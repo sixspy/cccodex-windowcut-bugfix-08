@@ -4,7 +4,7 @@ export const windowsViewTemplate = `
   <h2>窗口条带</h2>
   <p class="muted">关窗占窗锁；后到争用只记审计。关窗后才能物化。</p>
   <table>
-    <thead><tr><th>窗口</th><th>世代</th><th>开启</th><th>关闭</th><th>状态</th><th>操作</th></tr></thead>
+    <thead><tr><th>窗口</th><th>世代</th><th>开启</th><th>关闭</th><th>状态</th><th>持有锁</th><th>操作</th></tr></thead>
     <tbody>
       <tr v-for="w in windows" :key="w.id">
         <td>{{w.name}}</td>
@@ -12,6 +12,7 @@ export const windowsViewTemplate = `
         <td>{{w.open_at}}</td>
         <td>{{w.close_at}}</td>
         <td>{{w.status}}</td>
+        <td :class="w.lock_holder?'ok':'muted'">{{w.lock_holder||'—'}}</td>
         <td>
           <button class="ghost" @click="closeWin(w.id)">关窗</button>
           <button class="ghost" @click="materialize(w.id)">物化</button>

@@ -38,6 +38,25 @@
 - 窗重开作废重算 vs 增量补丁合并
 - 切版旁路暂存 vs 开始瞬间拒收
 
+## 释锁口径（BUGFIX-08，当天禁止改口）
+
+缺陷：甲持锁时乙调用释放接口删掉锁行，甲仍以为持锁继续双写。
+
+《持有人释锁册》当天唯一口径：**甲路径**——请求用户不等于 `holder` 即拒绝删除锁行，正式零改；乙路径（`hold_ticket` 票根同事务核销）不启用、不混用。
+
+| 落点 | 表 / 接口 |
+|----|-----------|
+| 持锁列表 | `window_locks` → `GET /api/locks` |
+| 票根回执 | `lock_receipts` → `GET /api/locks/receipts` |
+| 审计流水 | `audit_trail`（`lock_release_denied` / `lock_release` / `盗释偏了`）→ `GET /api/audit` |
+| 窗口条带 | `GET /api/windows` 增加 `lock_key` / `lock_holder` |
+| 争用 | `contention_log`（`争用` / `盗释`）→ `GET /api/contention` |
+
+- 释锁册：`GET /api/locks/ledger`；当天改口 `POST /api/locks/ledger` 一律 409。
+- 偏离释锁册：拒写并记「盗释偏了」，锁行不动。
+- 业务模块 `finally` 只调 `release_held`（按 holder 绑定静默释放），严格审计走 `POST /api/locks/release`。
+- 红测先于修复：`tests/test_lock_holder.py`。
+
 ## 启动（一键）
 
 ```powershell

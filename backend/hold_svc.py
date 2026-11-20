@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException
 
 from auth import AuthHeader, require_user
 from db import connect, write_audit
-from locks import release, require_lock
+from locks import release_held, require_lock
 from models import HoldIn
 
 router = APIRouter(tags=["hold"])
@@ -51,7 +51,7 @@ def create_hold(body: HoldIn, authorization: AuthHeader = None):
             conn.commit()
             return {"ok": True, "hold_id": cur.lastrowid, "status": "暂存"}
         finally:
-            release(conn, lock_key, user)
+            release_held(conn, lock_key, user)
             conn.commit()
 
 

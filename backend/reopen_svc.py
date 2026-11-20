@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException
 
 from auth import AuthHeader, require_user
 from db import connect, write_audit
-from locks import release, require_lock
+from locks import release_held, require_lock
 from models import ReopenIn
 
 router = APIRouter(tags=["reopen"])
@@ -68,5 +68,5 @@ def reopen_stub(wid: int, body: ReopenIn, authorization: AuthHeader = None):
                 "to_generation": to_gen,
             }
         finally:
-            release(conn, lock_key, user)
+            release_held(conn, lock_key, user)
             conn.commit()

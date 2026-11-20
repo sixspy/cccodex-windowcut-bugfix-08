@@ -9,7 +9,7 @@ from db import connect
 router = APIRouter(tags=["audit"])
 
 
-# BUGFIX-08 埋雷：争用/盗释审计不过滤 forced 释锁
+# 争用 / 盗释 / 盗释偏了 与持锁列表、票根回执、窗口条带同源落库。
 @router.get("/api/audit")
 def list_audit(authorization: AuthHeader = None, limit: int = 100):
     require_user(authorization)

@@ -27,6 +27,8 @@ createApp({
     const audits = ref([]);
     const contention = ref([]);
     const locks = ref([]);
+    const receipts = ref([]);
+    const ledger = ref({});
     const holds = ref([]);
     const dash = ref({});
     const form = ref({
@@ -106,6 +108,12 @@ createApp({
       const lk = await api.get("/api/locks");
       if (lk === null) return;
       locks.value = Array.isArray(lk.body.items) ? lk.body.items : [];
+      const rc = await api.get("/api/locks/receipts?limit=50");
+      if (rc === null) return;
+      receipts.value = Array.isArray(rc.body.items) ? rc.body.items : [];
+      const lg = await api.get("/api/locks/ledger");
+      if (lg === null) return;
+      ledger.value = lg.body || {};
       const hd = await api.get("/api/holds");
       if (hd === null) return;
       holds.value = Array.isArray(hd.body.items) ? hd.body.items : [];
@@ -207,6 +215,8 @@ createApp({
       audits,
       contention,
       locks,
+      receipts,
+      ledger,
       holds,
       dash,
       form,

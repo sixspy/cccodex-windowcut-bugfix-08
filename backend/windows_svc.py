@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException
 
 from auth import AuthHeader, require_user
 from db import connect, write_audit
-from locks import release, require_lock
+from locks import release_held, require_lock
 from models import WindowCreateIn
 
 router = APIRouter(tags=["windows"])
@@ -18,7 +18,19 @@ def list_windows(authorization: AuthHeader = None):
     require_user(authorization)
     with connect() as conn:
         rows = conn.execute("SELECT * FROM windows ORDER BY id").fetchall()
-        return {"items": [dict(r) for r in rows]}
+        held = {
+            r["lock_key"]: r["holder"]
+            for r in conn.execute(
+                "SELECT lock_key,holder FROM window_locks"
+            ).fetchall()
+        }
+        items = []
+        for row in rows:
+            item = dict(row)
+            item["lock_key"] = f"window:{row['id']}"
+            item["lock_holder"] = held.get(item["lock_key"])
+            items.append(item)
+        return {"items": items}
 
 
 @router.post("/api/windows")
@@ -61,7 +73,7 @@ def close_window(wid: int, authorization: AuthHeader = None):
             conn.commit()
             return {"ok": True, "seal_token": token}
         finally:
-            release(conn, lock_key, user)
+            release_held(conn, lock_key, user)
             conn.commit()
 
 

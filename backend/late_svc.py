@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 from auth import AuthHeader, require_user
 from db import connect, write_audit
-from locks import release, require_lock
+from locks import release_held, require_lock
 
 router = APIRouter(tags=["late"])
 
@@ -81,7 +81,7 @@ def promote_stub(body: LatePromoteIn, authorization: AuthHeader = None):
                 "message": "迟到补入空桩已登记，正式窗内事件未改",
             }
         finally:
-            release(conn, lock_key, user)
+            release_held(conn, lock_key, user)
             conn.commit()
 
 

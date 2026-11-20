@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException
 
 from auth import AuthHeader, require_user
 from db import connect, write_audit
-from locks import release, require_lock
+from locks import release_held, require_lock
 from models import MaterializeIn
 
 router = APIRouter(tags=["materialize"])
@@ -65,7 +65,7 @@ def materialize(
                 "partition_key": partition,
             }
         finally:
-            release(conn, lock_key, user)
+            release_held(conn, lock_key, user)
             conn.commit()
 
 
